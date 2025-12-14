@@ -1,15 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useLibrary } from '../context/LibraryContext';
+import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../hooks/useConfirm';
+import { useToast } from '../hooks/useToast';
 import Header from '../components/Header';
 import Loading from './Loading';
 import Table from '../components/Table/Table';
-import { useSearchParams } from 'react-router-dom';
-
 import Modal from '../components/Modal';
 import TableActions from '../components/ActionButton/TableActions';
+import ConfirmDialog from '../components/ConfirmDialog/ConfirmDialog';
+import Toast from '../components/Toast/Toast';
 
 const Authors = () => {
-  const [authors, setAuthors] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { authors, isLoading, addAuthor, updateAuthor, deleteAuthor: removeAuthor } = useLibrary();
+  const { isAuthenticated } = useAuth();
+  const { confirmState, confirm, handleCancel: handleConfirmCancel } = useConfirm();
+  const { toast, showToast, hideToast } = useToast();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [editingRowId, setEditingRowId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -21,17 +29,6 @@ const Authors = () => {
     const search = searchParams.get('search') || '';
     setSearchTerm(search);
   }, [searchParams]);
-
-  // Fetch JSON data
-  useEffect(() => {
-    fetch('/data/authors.json')
-      .then((response) => response.json())
-      .then((data) => {
-        console.log('Fetched authors:', data);
-        setAuthors(Array.isArray(data) ? data : [data]);
-      })
-      .catch((error) => console.error('Error fetching authors:', error));
-  }, []);
 
   // filter based on search
   const filteredAuthors = useMemo(() => {
@@ -45,60 +42,72 @@ const Authors = () => {
   }, [authors, searchTerm]);
 
   const columns = useMemo(
-    () => [
-      { header: 'ID', accessorKey: 'id' },
-      {
-        header: 'Name',
-        accessorFn: (row) => `${row.first_name} ${row.last_name}`,
-        id: 'name',
-        cell: ({ row }) =>
-          editingRowId === row.original.id ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSave(row.original.id);
-                } else if (e.key === 'Escape') {
-                  handleCancel();
-                }
-              }}
-              className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-              tooltip="Enter to save"
+    () => {
+      const baseColumns = [
+        { header: 'ID', accessorKey: 'id' },
+        {
+          header: 'Name',
+          accessorFn: (row) => `${row.first_name} ${row.last_name}`,
+          id: 'name',
+          cell: ({ row }) =>
+            editingRowId === row.original.id && isAuthenticated ? (
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSave(row.original.id);
+                  } else if (e.key === 'Escape') {
+                    handleCancel();
+                  }
+                }}
+                className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+                tooltip="Enter to save"
+              />
+            ) : (
+              `${row.original.first_name} ${row.original.last_name}`
+            ),
+        },
+      ];
+
+      // Only add Actions column if authenticated
+      if (isAuthenticated) {
+        baseColumns.push({
+          header: 'Actions',
+          id: 'actions',
+          cell: ({ row }) => (
+            <TableActions
+              row={row}
+              onEdit={
+                editingRowId === row.original.id
+                  ? handleCancel
+                  : () => handleEdit(row.original)
+              }
+              onDelete={() => deleteAuthor(row.original.id, row.original.first_name, row.original.last_name)}
             />
-          ) : (
-            `${row.original.first_name} ${row.original.last_name}`
           ),
-      },
-      {
-        header: 'Actions',
-        id: 'actions',
-        cell: ({ row }) => (
-          <TableActions 
-            row={row}
-            onEdit={
-              editingRowId === row.original.id
-                ? handleCancel
-                : () => handleEdit(row.original)
-            }
-            onDelete={() => deleteAuthor(row.original.id, row.original.first_name, row.original.last_name)}
-          />
-        ),
-      },
-    ],
-    [[editingRowId, editName]]
+        });
+      }
+
+      return baseColumns;
+    },
+    [editingRowId, editName, isAuthenticated]
   );
 
-  const deleteAuthor = (id, first_name, last_name) => {
-    // show prompt
-
-    if (window.confirm(`Are you sure you want to delete ${first_name} ${last_name}?`)) {
-      setAuthors((prevAuthors) => prevAuthors.filter((author) => author.id !== id));
+  const deleteAuthor = async (id, first_name, last_name) => {
+    const confirmed = await confirm(
+      'Delete Author',
+      `Are you sure you want to delete ${first_name} ${last_name}?`
+    );
+    
+    if (confirmed) {
+      removeAuthor(id);
       setEditingRowId(null);
       setEditName('');
       setNewName('');
+      showToast(`${first_name} ${last_name} deleted successfully`, 'success');
     }
   };
 
@@ -108,20 +117,22 @@ const Authors = () => {
   };
 
   const handleSave = (id) => {
+    if (!editName.trim()) {
+      showToast('Name cannot be empty', 'error');
+      return;
+    }
+
     const [first_name, ...last_name_parts] = editName.trim().split(' ');
     const last_name = last_name_parts.join(' ');
 
-    setAuthors(
-      authors.map((author) =>
-        author.id === id
-          ? { ...author, first_name, last_name: last_name || author.last_name }
-          : author
-      )
-    );
-
+    updateAuthor(id, {
+      first_name,
+      last_name: last_name || ''
+    });
 
     setEditingRowId(null);
     setEditName('');
+    showToast('Author updated successfully', 'success');
   };
 
   const handleCancel = () => {
@@ -137,36 +148,46 @@ const Authors = () => {
   };
   const handleAddNew = () => {
     if (newName.trim() === '') {
+      showToast('Please enter a name', 'error');
       return;
     }
     const [first_name, ...last_name_parts] = newName.trim().split(' ');
     const last_name = last_name_parts.join(' ');
 
-    const newAuthor = {
-      id: authors.length + 1,
+    addAuthor({
       first_name,
       last_name: last_name || '',
-    };
-
-    setAuthors((prevAuthors) => [...prevAuthors, newAuthor]);
-    
+    });
 
     setNewName('');
     closeModal();
+    showToast('Author added successfully', 'success');
   };
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <div className='py-6'>
-      <Header addNew={openModal} title="Authors List" />
-      {authors.length > 0 ? (
-        <Table
-          data={filteredAuthors}
-          columns={columns}
-         
-        />
-      ) : (
-        <Loading />
-      )}
+      <Header addNew={isAuthenticated ? openModal : null} title="Authors List" />
+      <Table
+        data={filteredAuthors}
+        columns={columns}
+      />
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={handleConfirmCancel}
+      />
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
       <Modal
         title={' New Author'}
         save={handleAddNew}

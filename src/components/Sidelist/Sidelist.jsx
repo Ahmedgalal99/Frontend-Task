@@ -29,8 +29,8 @@ const Sidelist = () => {
         <NavLink to="/stores" className={({ isActive }) => (isActive ? 'active' : '')}>
           <ListItem active={isActive('/stores')} title="Stores" icon={storeIcon} />
         </NavLink>
-        <NavLink to="/author" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <ListItem active={isActive('/author')} title="Author" icon={authorIcon} />
+        <NavLink to="/authors" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <ListItem active={isActive('/authors')} title="Authors" icon={authorIcon} />
         </NavLink>
         <NavLink to="/books" className={({ isActive }) => (isActive ? 'active' : '')}>
           <ListItem active={isActive('/books')} title="Books" icon={bookIcon} />

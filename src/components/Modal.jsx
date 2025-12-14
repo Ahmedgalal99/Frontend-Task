@@ -5,7 +5,7 @@ import React from 'react'
 const Modal = (
     {
         show,
-        setShow,
+   
         title,
         save,
         cancel,

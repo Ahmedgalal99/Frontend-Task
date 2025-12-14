@@ -1,5 +1,5 @@
 // src/components/BooksTable.jsx
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import Table from './Table/Table';
 import TableActions from './ActionButton/TableActions';
 
@@ -12,6 +12,7 @@ const BooksTable = ({
   setEditName,
   setBooks,
   deleteBook,
+  isAuthenticated = false,
   columnsConfig = ['id', 'name', 'pages', 'author', 'actions'], // Default columns
 }) => {
   // Create a lookup map for authors
@@ -38,7 +39,7 @@ const BooksTable = ({
         header: 'Name',
         accessorKey: 'name',
         cell: ({ row }) =>
-          editingRowId === row.original.id ? (
+          editingRowId === row.original.id && isAuthenticated ? (
             <input
               type="text"
               value={editName}
@@ -73,13 +74,15 @@ const BooksTable = ({
         ),
       },
     }),
-    [editingRowId, editName]
+    [editingRowId, editName, isAuthenticated]
   );
 
-  // Select columns based on columnsConfig
+  // Select columns based on columnsConfig and authentication
   const columns = useMemo(() => {
-    return columnsConfig.map((colKey) => allColumns[colKey]).filter(Boolean);
-  }, [columnsConfig, allColumns]);
+    // Filter out actions if not authenticated
+    const activeConfig = isAuthenticated ? columnsConfig : columnsConfig.filter((col) => col !== 'actions');
+    return activeConfig.map((key) => allColumns[key]).filter(Boolean);
+  }, [columnsConfig, allColumns, isAuthenticated]);
 
   // Handle editing
   const handleEdit = (book) => {

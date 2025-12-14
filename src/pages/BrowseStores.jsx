@@ -1,14 +1,14 @@
 // src/pages/BrowseStores.jsx
-import React from 'react';
+import { useMemo } from 'react';
+import { useLibrary } from '../context/LibraryContext';
 import Loading from '../pages/Loading';
 import StoreCard from '../components/Cards/StoreCard';
-import useLibraryData from '../hooks/useLibraryData';
 
 const BrowseStores = () => {
-  const { stores, inventory, isLoading } = useLibraryData();
+  const { stores, inventory, isLoading } = useLibrary();
 
   // Calculate metrics for each store
-  const storesWithMetrics = React.useMemo(() => {
+  const storesWithMetrics = useMemo(() => {
     return stores.map((store) => {
       const storeInventory = inventory.filter(
         (item) => item.store_id === store.id
@@ -39,9 +39,9 @@ const BrowseStores = () => {
     <div className="py-6 px-4">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Browse All Stores</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {storesWithMetrics.map((store, index) => (
+        {storesWithMetrics.map((store) => (
           <StoreCard
-            key={index}
+            key={store.id}
             name={store.name}
             noOfBooks={store.noOfBooks}
             averagePrice={store.averagePrice}

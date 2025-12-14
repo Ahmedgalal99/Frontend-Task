@@ -1,23 +1,21 @@
-// src/pages/Home.jsx
-import React from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Loading from '../pages/Loading';
 import StoreCard from '../components/Cards/StoreCard';
 import BookCard from '../components/Cards/BookCard';
 import AuthorCard from '../components/Cards/AuthorCard';
-import useLibraryData from '../hooks/useLibraryData';
+import { useLibrary } from '../context/LibraryContext';
 
 const Home = () => {
   const {
     stores,
-    booksWithStores,
     authors,
     books,
     inventory,
     isLoading,
-  } = useLibraryData();
+  } = useLibrary();
 
-  const storesWithMetrics = React.useMemo(() => {
+  const storesWithMetrics = useMemo(() => {
     return stores.slice(0, 5).map((store) => { 
       const storeInventory = inventory.filter(
         (item) => item.store_id === store.id
@@ -27,6 +25,7 @@ const Home = () => {
       const averagePrice = noOfBooks > 0 ? totalPrice / noOfBooks : 0;
 
       return {
+        id: store.id,
         name: store.name,
         noOfBooks,
         averagePrice,
@@ -34,12 +33,34 @@ const Home = () => {
     });
   }, [stores, inventory]);
 
+  const booksWithStores = useMemo(() => {
+    return books.map((book) => {
+      const bookInventory = inventory.filter((item) => item.book_id === book.id);
+      const bookStores = bookInventory.map((item) => {
+        const store = stores.find(s => s.id === item.store_id);
+        return {
+          name: store?.name || 'Unknown Store',
+          price: item.price,
+        };
+      });
+
+      const author = authors.find(a => a.id === book.author_id);
+      return {
+        id: book.id,
+        title: book.name,
+        author: author ? `${author.first_name} ${author.last_name}` : 'Unknown Author',
+        stores: bookStores,
+      };
+    });
+  }, [books, inventory, authors, stores]);
+
   const limitedBooksWithStores = booksWithStores.slice(0, 5);
 
-  const authorsWithBookCount = React.useMemo(() => {
+  const authorsWithBookCount = useMemo(() => {
     return authors.slice(0, 5).map((author) => { 
       const noOfBooks = books.filter((book) => book.author_id === author.id).length;
       return {
+        id: author.id,
         name: `${author.first_name} ${author.last_name}`,
         noOfBooks,
       };
@@ -57,15 +78,15 @@ const Home = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Stores</h2>
           <Link 
-            to="/browsestores" 
+            to="/browse-stores" 
             className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
           >
             View All
           </Link>
         </div>
         <div className="flex overflow-x-auto gap-4 pb-4">
-          {storesWithMetrics.map((store, index) => (
-            <div key={index} className="flex-shrink-0">
+          {storesWithMetrics.map((store) => (
+            <div key={store.id} className="flex-shrink-0">
               <StoreCard
                 name={store.name}
                 noOfBooks={store.noOfBooks}
@@ -82,15 +103,15 @@ const Home = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Books</h2>
           <Link 
-            to="/browsebooks" 
+            to="/browse-books" 
             className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
           >
             View All
           </Link>
         </div>
         <div className="flex overflow-x-auto gap-4 pb-4">
-          {limitedBooksWithStores.map((book, index) => (
-            <div key={index} className="flex-shrink-0">
+          {limitedBooksWithStores.map((book) => (
+            <div key={book.id} className="flex-shrink-0">
               <BookCard
                 title={book.title}
                 author={book.author}
@@ -106,15 +127,15 @@ const Home = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Authors</h2>
           <Link 
-            to="/browseauthors" 
+            to="/browse-authors" 
             className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
           >
             View All
           </Link>
         </div>
         <div className="flex overflow-x-auto gap-4 pb-4">
-          {authorsWithBookCount.map((author, index) => (
-            <div key={index} className="flex-shrink-0">
+          {authorsWithBookCount.map((author) => (
+            <div key={author.id} className="flex-shrink-0">
               <AuthorCard
                 name={author.name}
                 noOfBooks={author.noOfBooks}

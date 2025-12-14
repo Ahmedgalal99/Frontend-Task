@@ -13,22 +13,22 @@ const useLibraryData = ({ storeId = null, searchTerm = '' } = {}) => {
     fetch('/data/stores.json')
       .then((response) => response.json())
       .then((data) => setStores(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching stores:', error));
+      .catch((error) => console.error('Error fetching stores:', error?.message || String(error)));
 
     fetch('/data/books.json')
       .then((response) => response.json())
       .then((data) => setBooks(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching books:', error));
+      .catch((error) => console.error('Error fetching books:', error?.message || String(error)));
 
     fetch('/data/authors.json')
       .then((response) => response.json())
       .then((data) => setAuthors(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching authors:', error));
+      .catch((error) => console.error('Error fetching authors:', error?.message || String(error)));
 
     fetch('/data/inventory.json')
       .then((response) => response.json())
       .then((data) => setInventory(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching inventory:', error));
+      .catch((error) => console.error('Error fetching inventory:', error?.message || String(error)));
   }, []);
 
   // Create lookup maps

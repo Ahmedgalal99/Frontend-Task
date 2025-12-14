@@ -1,23 +1,16 @@
 // src/components/BookCard.jsx
-import React from 'react';
-import { FaShoppingCart } from 'react-icons/fa'; // For the cart icon
+import { FaShoppingCart } from 'react-icons/fa';
+import { generateColorFromString } from '../../utils/idGenerator';
 
-const randomColorGenerator = ()=>{
-  // Function to generate a random color
-  const letters = '0123456789ABCDEF';
-  let color = '#';
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color+"20";
-}
 const BookCard = ({ title, author, stores }) => {
+  const bookColor = generateColorFromString(title);
+  
   return (
     <div className="bg-white shadow-md rounded-lg p-4 flex gap-4 w-full max-w-md">
       {/* Book Cover */}
       <div
-        className="flex items-center justify-center h-48 w-28 bg-peach-100 rounded-lg"
-        style={{ backgroundColor:randomColorGenerator()  }} // Light peach background
+        className="flex items-center justify-center h-48 w-28 rounded-lg"
+        style={{ backgroundColor: bookColor }}
       >
         <p className="text-center text-black font-medium text-lg px-2">{title}</p>
       </div>
